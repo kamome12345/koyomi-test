@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>日本の納税カレンダー自動作成ツール</title>
+<style>
+  :root{
+    --bg:#0f172a;        /* slate-900 */
+    --panel:#111827;     /* gray-900 */
+    --ink:#e5e7eb;       /* gray-200 */
+    --muted:#94a3b8;     /* slate-400 */
+    --accent:#38bdf8;    /* sky-400 */
+    --ok:#22c55e;        /* green-500 */
+    --warn:#f59e0b;      /* amber-500 */
+    --bad:#ef4444;       /* red-500 */
+    --chip:#1f2937;      /* gray-800 */
+    --line:#1f2937;
+  }
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI","YuGothic","Meiryo",sans-serif;
+  }
+  header{padding:28px 16px 8px; text-align:center;}
+  header h1{margin:0 0 6px; font-size:22px; letter-spacing:.02em; font-weight:700;}
+  header p{margin:0; color:var(--muted); font-size:14px;}
+  main{max-width:1100px; margin:18px auto 64px; padding:0 16px; display:grid; grid-template-columns: 420px 1fr; gap:18px;}
+  @media (max-width:980px){ main{grid-template-columns:1fr;} }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35); overflow:hidden;
+  }
+  .card h2{margin:0; padding:14px 16px; font-size:16px; font-weight:700; border-bottom:1px solid var(--line); background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);}
+  .card .body{padding:14px 16px; display:grid; gap:14px;}
+  .row{display:grid; gap:8px;}
+  .row label{font-weight:600; font-size:14px;}
+  .hint{color:var(--muted); font-size:12.5px;}
+  .inline{display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center;}
+  .inline > *{flex:0 0 auto;}
+  .pill{
+    background:var(--chip); border:1px solid var(--line); padding:8px 10px; border-radius:10px;
+  }
+  select, input[type="number"], input[type="text"], input[type="date"]{
+    background:#0b1220; color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:8px 10px; outline:none; min-width:120px;
+  }
+  input[type="checkbox"], input[type="radio"]{ transform:translateY(1px); }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:560px){ .grid2{grid-template-columns:1fr;} }
+  button{
+    appearance:none; border:1px solid var(--accent); color:#001018; background:var(--accent);
+    font-weight:700; padding:10px 14px; border-radius:12px; cursor:pointer;
+  }
+  button.ghost{
+    background:transparent; color:var(--ink); border-color:var(--line);
+  }
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .kpi{display:flex; gap:8px; align-items:center; color:var(--muted); font-size:13px;}
+  .kpi strong{color:var(--ink); font-weight:700;}
+  .list{padding:8px;}
+  .month{
+    border-top:1px solid var(--line); padding:8px 12px;
+  }
+  .month h3{margin:6px 0 10px; font-size:15px; color:#cbd5e1;}
+  .item{
+    border:1px dashed var(--line); border-radius:12px; padding:10px 12px; margin:8px 0;
+    display:grid; gap:4px; background:#0b1220;
+  }
+  .item .title{font-weight:700;}
+  .tags{display:flex; gap:6px; flex-wrap:wrap;}
+  .tag{font-size:11.5px; background:#0a1324; border:1px solid #0f2038; padding:2px 8px; border-radius:999px; color:#cbd5e1;}
+  .tag.ok{border-color:rgba(34,197,94,.4); color:#86efac;}
+  .tag.warn{border-color:rgba(245,158,11,.4); color:#facc15;}
+  .tag.bad{border-color:rgba(239,68,68,.4); color:#fca5a5;}
+  .empty{padding:24px; color:var(--muted);}
+  .footnote{padding:10px 14px; border-top:1px solid var(--line); color:#cbd5e1; font-size:12.5px;}
+  .sep{height:1px; background:var(--line); margin:8px 0;}
+</style>
+</head>
+<body>
+<header>
+  <h1>納税カレンダー自動作成ツール（日本）</h1>
+  <p>条件を選ぶと、あなたに必要な「納付イベント」だけを抽出します。ICSを書き出せばGoogle/Appleカレンダーに登録できます。</p>
+</header>
+
+<main>
+  <!-- 左：条件フォーム -->
+  <section class="card" aria-labelledby="formTitle">
+    <h2 id="formTitle">条件の選択</h2>
+    <div class="body" id="form">
+      <div class="row grid2">
+        <div>
+          <label for="year">対象年（納付年）</label>
+          <input id="year" type="number" value="2025" min="2024" />
+          <div class="hint">例：2025年のカレンダー → 所得税は「2024年分（令和6年分）」の申告納付が3/15、消費税は3/31など</div>
+        </div>
+        <div>
+          <label>住民税の徴収方法</label>
+          <div class="inline pill">
+            <label><input type="radio" name="jumin" value="tokubetsu" checked> 特別徴収（給与天引き）</label>
+            <label><input type="radio" name="jumin" value="futsu"> 普通徴収（自分で4期）</label>
+            <label><input type="radio" name="jumin" value="nenkin"> 年金からの特別徴収（偶数月）</label>
+          </div>
+          <div class="hint">通常：給与所得者は特別徴収が原則。副業分のみ普通徴収にする運用もあります。</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>健康保険・年金</label>
+        <div class="inline pill">
+          <label><input type="radio" name="hoken" value="shaho" checked> 社会保険（会社員等）</label>
+          <label><input type="radio" name="hoken" value="kokuho"> 国民健康保険（自営等）</label>
+        </div>
+        <div class="inline pill">
+          <label><input type="checkbox" id="payKokuminNenkin"> 国民年金を納付する</label>
+          <span class="hint">65歳以降などで不要なら未チェック</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>所得税（確定申告・予定納税）</label>
+        <div class="inline pill">
+          <label><input type="checkbox" id="needKakutei"> 確定申告が必要（例：個人事業主、副業所得20万円超 等）</label>
+          <label><input type="checkbox" id="yotei"> 予定納税が発生（前年基準額15万円以上）</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>個人事業税</label>
+        <div class="inline pill">
+          <label><input type="checkbox" id="kojigyo"> 対象業種かつ課税見込み（事業主控除超）</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>消費税</label>
+        <div class="inline pill">
+          <label><input type="checkbox" id="shohizei"> 課税事業者（インボイス登録等）</label>
+          <label>中間申告回数
+            <select id="chukanCount" disabled>
+              <option value="0">0（なし）</option>
+              <option value="1">1回</option>
+              <option value="3">3回</option>
+              <option value="11">11回</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <label for="customChukan">中間申告の期日（任意；カンマ区切りで YYYY-MM-DD）</label>
+          <input id="customChukan" type="text" placeholder="例）2025-08-31, 2025-11-30, 2026-02-28" disabled />
+          <div class="hint">運用・前年確定税額により回数と期日が変動します。税務署の通知が正です。未入力なら中間分は省略します。</div>
+        </div>
+      </div>
+
+      <div class="row grid2">
+        <div>
+          <label>資産保有</label>
+          <div class="inline pill">
+            <label><input type="checkbox" id="hasKotei"> 固定資産（家・土地・償却資産）</label>
+            <label><input type="checkbox" id="hasCar"> 自動車/軽自動車</label>
+          </div>
+        </div>
+        <div>
+          <label>国保・保険料の扱い</label>
+          <div class="inline pill">
+            <label><input type="checkbox" id="genKokuho"> 国民健康保険料を月次で出力</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="row grid2">
+        <div>
+          <label for="zoyoDate">贈与があった日</label>
+          <input id="zoyoDate" type="date" />
+          <div class="hint">あった場合のみ。翌年2/1〜3/15が申告・納付期間（出力は3/15を目安）。</div>
+        </div>
+        <div>
+          <label for="sozokuDate">相続開始日（被相続人の死亡日）</label>
+          <input id="sozokuDate" type="date" />
+          <div class="hint">10か月後が申告・納付期限。</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="fudosanDate">不動産を取得した日</label>
+        <input id="fudosanDate" type="date" />
+        <div class="hint">不動産取得税は「自治体からの納税通知書に記載の期日」。ここではメモ用イベントを出力します。</div>
+      </div>
+
+      <div class="sep"></div>
+      <div class="toolbar">
+        <button id="run">納付イベントを生成</button>
+        <button id="download" class="ghost" disabled>ICSを書き出す</button>
+        <div class="kpi"><strong id="count">0</strong> 件のイベント</div>
+      </div>
+    </div>
+    <div class="footnote">
+      ※ 期日が土日祝に当たる場合は、通常は翌営業日が納期限。住民税・固定資産税・国保等は自治体により期・回数・日付が異なります。実際の納付書・通知の期日を優先してください。
+    </div>
+  </section>
+
+  <!-- 右：結果 -->
+  <section class="card" aria-labelledby="resultTitle">
+    <h2 id="resultTitle">月別の納付イベント</h2>
+    <div id="result" class="list">
+      <div class="empty">左の条件を設定して「納付イベントを生成」を押してください。</div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // inputs
+  const yearEl = $("#year");
+  const juminEls = $$("input[name='jumin']");
+  const hokenEls = $$("input[name='hoken']");
+  const payKokuminNenkinEl = $("#payKokuminNenkin");
+  const needKakuteiEl = $("#needKakutei");
+  const yoteiEl = $("#yotei");
+  const kojigyoEl = $("#kojigyo");
+  const shohizeiEl = $("#shohizei");
+  const chukanCountEl = $("#chukanCount");
+  const customChukanEl = $("#customChukan");
+  const hasKoteiEl = $("#hasKotei");
+  const hasCarEl = $("#hasCar");
+  const genKokuhoEl = $("#genKokuho");
+  const zoyoDateEl = $("#zoyoDate");
+  const sozokuDateEl = $("#sozokuDate");
+  const fudosanDateEl = $("#fudosanDate");
+
+  const runBtn = $("#run");
+  const dlBtn = $("#download");
+  const resultEl = $("#result");
+  const countEl = $("#count");
+
+  // UX: 消費税の有無に応じて中間入力を有効化
+  shohizeiEl.addEventListener("change", () => {
+    const on = shohizeiEl.checked;
+    chukanCountEl.disabled = !on;
+    customChukanEl.disabled = !on;
+    if(!on){ chukanCountEl.value = "0"; customChukanEl.value=""; }
+  });
+
+  // 小道具
+  const pad2 = (n)=> String(n).padStart(2,"0");
+  const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const endOfMonth = (y,m)=> new Date(y, m, 0); // m: 1-12 で月末
+  const addMonths = (d, n)=>{ const c = new Date(d); c.setMonth(c.getMonth()+n); return c; };
+  const addDays = (d, n)=>{ const c = new Date(d); c.setDate(c.getDate()+n); return c; };
+
+  // 祝日考慮は煩雑なので、ここでは「月末日」を出力（注記あり）
+  function typicalEnd(y, m){ return endOfMonth(y, m); }
+
+  // イベント生成
+  function buildEvents(){
+    const Y = Number(yearEl.value || new Date().getFullYear());
+    const prev = Y - 1;
+
+    const jumin = (juminEls.find(r=>r.checked)||{}).value;
+    const hoken = (hokenEls.find(r=>r.checked)||{}).value;
+
+    const needKakutei = needKakuteiEl.checked;
+    const yotei = yoteiEl.checked;
+    const kojigyo = kojigyoEl.checked;
+    const shohizei = shohizeiEl.checked;
+    const chukanCount = Number(chukanCountEl.value);
+    const customChukan = customChukanEl.value.trim();
+    const hasKotei = hasKoteiEl.checked;
+    const hasCar = hasCarEl.checked;
+    const genKokuho = genKokuhoEl.checked;
+    const payKokuminNenkin = payKokuminNenkinEl.checked;
+
+    const events = [];
+
+    // 所得税（確定申告）
+    if(needKakutei){
+      // 原則：3/15（週末等は翌営業日）→ ここでは 3/15 を出力
+      events.push({
+        date: `${Y}-03-15`,
+        title: `所得税の納付（${prev}年分／確定申告）`,
+        tags: ["国税","所得税","確定申告"],
+        note: "通常は3/15。週末・祝日の場合は翌営業日。"
+      });
+      // 予定納税
+      if(yotei){
+        events.push({
+          date: ymd(typicalEnd(Y,7)), // 7/末
+          title: "所得税の予定納税（第1期）",
+          tags: ["国税","所得税","予定納税"],
+          note: "前年の予定納税基準額15万円以上が目安。確定申告で精算。"
+        });
+        events.push({
+          date: ymd(typicalEnd(Y,11)), // 11/末
+          title: "所得税の予定納税（第2期）",
+          tags: ["国税","所得税","予定納税"],
+          note: "前年見込みにより減額申請制度あり。"
+        });
+      }
+    }
+
+    // 住民税
+    if(jumin === "futsu"){
+      // 普通徴収（4期：6/末・8/末・10/末・翌1/末が典型）
+      events.push({date: ymd(typicalEnd(Y,6)),  title:"住民税（第1期・普通徴収）", tags:["地方税","住民税"], note:"自治体により期・日付は異なることがあります。"});
+      events.push({date: ymd(typicalEnd(Y,8)),  title:"住民税（第2期・普通徴収）", tags:["地方税","住民税"], note:""});
+      events.push({date: ymd(typicalEnd(Y,10)), title:"住民税（第3期・普通徴収）", tags:["地方税","住民税"], note:""});
+      events.push({date: ymd(typicalEnd(Y+1,1)), title:`住民税（第4期・普通徴収）`, tags:["地方税","住民税"], note:""});
+    }else if(jumin === "nenkin"){
+      // 年金からの特別徴収（偶数月）。初年度など例外があるため、メモ的イベントとして偶数月末を出力
+      [2,4,6,8,10,12].forEach(m=>{
+        events.push({
+          date: ymd(typicalEnd(Y,m)),
+          title: "住民税（年金からの特別徴収・偶数月）",
+          tags:["地方税","住民税","特別徴収"],
+          note:"実際は仮徴収（4,6,8月）・本徴収（10,12,2月）等。年金支払日ベース。"
+        });
+      });
+    } // 特別徴収（給与天引）は自動納付なので出力しない
+
+    // 個人事業税（多くの都道府県で 8月末・11月末）
+    if(kojigyo){
+      events.push({date: ymd(typicalEnd(Y,8)), title:"個人事業税（第1期）", tags:["地方税","個人事業税"], note:"対象業種かつ事業主控除超で課税。"});
+      events.push({date: ymd(typicalEnd(Y,11)), title:"個人事業税（第2期）", tags:["地方税","個人事業税"], note:""});
+    }
+
+    // 消費税：確定申告・納付（個人：原則 3/31）
+    if(shohizei){
+      events.push({
+        date: `${Y}-03-31`,
+        title: `消費税および地方消費税の申告・納付（${prev}年分）`,
+        tags:["国税","消費税","確定"],
+        note:"課税期間末日の翌日から2か月。個人は原則3/31。"
+      });
+      // 中間申告（任意入力）
+      if(customChukan){
+        customChukan.split(",").map(s=>s.trim()).filter(Boolean).forEach(d=>{
+          events.push({date:d, title:"消費税 中間申告・納付", tags:["国税","消費税","中間"], note:"通知・納付書の期日を優先してください。"});
+        });
+      }
+    }
+
+    // 固定資産税・都市計画税（多くの自治体で 4/末・7/末・12/末・翌2/末）
+    if(hasKotei){
+      events.push({date: ymd(typicalEnd(Y,4)),  title:"固定資産税・都市計画税（第1期）", tags:["地方税","固定資産税"], note:"自治体差があります。納付書記載の期日を優先。"});
+      events.push({date: ymd(typicalEnd(Y,7)),  title:"固定資産税・都市計画税（第2期）", tags:["地方税","固定資産税"], note:""});
+      events.push({date: ymd(typicalEnd(Y,12)), title:"固定資産税・都市計画税（第3期）", tags:["地方税","固定資産税"], note:""});
+      events.push({date: ymd(typicalEnd(Y+1,2)), title:"固定資産税・都市計画税（第4期）", tags:["地方税","固定資産税"], note:""});
+    }
+
+    // 自動車税・軽自動車税（多くの自治体で 5月末）
+    if(hasCar){
+      events.push({date:`${Y}-05-31`, title:"自動車税（種別割）／軽自動車税（種別割）", tags:["地方税","自動車税"], note:"自治体差あり。納付書記載の期日を優先。"});
+    }
+
+    // 国民健康保険料（自治体により年10〜12回。ここでは当年の毎月末を仮置き）
+    if(genKokuho && hoken === "kokuho"){
+      for(let m=1;m<=12;m++){
+        events.push({
+          date: ymd(typicalEnd(Y,m)),
+          title: `国民健康保険料（月${m}）`,
+          tags:["保険料","国保"],
+          note:"自治体の回数・期日は通知に従って調整してください。"
+        });
+      }
+    }
+
+    // 国民年金（毎月末。ここでは当年分の各月末）
+    if(payKokuminNenkin){
+      for(let m=1;m<=12;m++){
+        events.push({
+          date: ymd(typicalEnd(Y,m)),
+          title: `国民年金保険料（${m}月分）`,
+          tags:["保険料","国民年金"],
+          note:"前納・付加保険料などの有無に応じて調整。"
+        });
+      }
+    }
+
+    // 贈与税：翌年 3/15 を目安に出力（申告期間は2/1-3/15）
+    if(zoyoDateEl.value){
+      const dz = new Date(zoyoDateEl.value);
+      const y = dz.getFullYear()+1;
+      events.push({
+        date:`${y}-03-15`,
+        title:`贈与税 申告・納付（${dz.getFullYear()}年分）`,
+        tags:["国税","贈与税"],
+        note:"申告期間は翌年2/1〜3/15。週末等は翌営業日。"
+      });
+    }
+
+    // 相続税：10か月後の同日（存在しない日は月末）
+    if(sozokuDateEl.value){
+      const ds = new Date(sozokuDateEl.value);
+      const due = addMonths(ds,10);
+      // 日付調整（例：31日→30日問題）を月末で吸収
+      const eom = endOfMonth(due.getFullYear(), due.getMonth()+1);
+      if(due.getDate() > eom.getDate()){ due.setDate(eom.getDate()); }
+      events.push({
+        date: ymd(due),
+        title:"相続税 申告・納付期限",
+        tags:["国税","相続税"],
+        note:"相続開始を知った日の翌日から10か月。"
+      });
+    }
+
+    // 不動産取得税：通知ベース（メモ）
+    if(fudosanDateEl.value){
+      const df = new Date(fudosanDateEl.value);
+      const memo = addMonths(df,4); // 目安メモ（3〜6か月で通知想定）
+      events.push({
+        date: ymd(memo),
+        title:"不動産取得税（納税通知予定の目安）",
+        tags:["地方税","不動産取得税","メモ"],
+        note:"期日は『納税通知書』に記載。到着後の期日を優先。"
+      });
+    }
+
+    // 並べ替え
+    events.sort((a,b)=> a.date.localeCompare(b.date));
+    return events;
+  }
+
+  // 描画
+  function render(events){
+    countEl.textContent = String(events.length);
+    if(events.length===0){
+      resultEl.innerHTML = `<div class="empty">該当するイベントはありません。</div>`;
+      dlBtn.disabled = true;
+      return;
+    }
+    // 月別にまとめる
+    const groups = {};
+    for(const ev of events){
+      const [y,m] = ev.date.split("-");
+      const key = `${y}-${m}`;
+      (groups[key] = groups[key] || []).push(ev);
+    }
+    const months = Object.keys(groups).sort();
+
+    const monthLabel = (key)=>{
+      const [y,m]=key.split("-");
+      return `${Number(y)}年 ${Number(m)}月`;
+    };
+
+    const tagHtml = (tags)=> tags.map(t=> `<span class="tag">${t}</span>`).join("");
+
+    resultEl.innerHTML = months.map(k=>{
+      const list = groups[k].map(ev=>`
+        <div class="item" data-date="${ev.date}">
+          <div class="title">${ev.title}</div>
+          <div class="hint">${ev.date}</div>
+          <div class="tags">${tagHtml(ev.tags||[])}</div>
+          ${ev.note? `<div class="hint">${ev.note}</div>`:""}
+        </div>
+      `).join("");
+      return `<div class="month">
+        <h3>${monthLabel(k)}</h3>
+        ${list}
+      </div>`;
+    }).join("");
+
+    dlBtn.disabled = false;
+  }
+
+  // ICS 生成
+  function downloadICS(events){
+    const tzid = "Asia/Tokyo";
+    const dtstamp = new Date();
+    const dtstampStr = dtstamp.toISOString().replace(/[-:]/g,"").split(".")[0]+"Z";
+
+    function formatDate(d){
+      // All-day event（ローカル日付）→ DATE形式（TZIDなし）
+      return d.replaceAll("-",""); // YYYYMMDD
+    }
+
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//TaxCal JP//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH"
+    ];
+
+    const summaryYear = yearEl.value || new Date().getFullYear();
+
+    events.forEach((ev,i)=>{
+      const uid = `tax-${i}-${ev.date}@taxcal.local`;
+      const d = formatDate(ev.date);
+      const desc = (ev.note || "") + (ev.tags?.length? ` [${ev.tags.join(", ")}]`:"");
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${dtstampStr}`,
+        `DTSTART;VALUE=DATE:${d}`,
+        `SUMMARY:${escapeICS(ev.title)}`,
+        desc? `DESCRIPTION:${escapeICS(desc)}`:"",
+        "END:VEVENT"
+      );
+    });
+
+    lines.push("END:VCALENDAR");
+
+    const blob = new Blob([lines.join("\r\n")], {type:"text/calendar;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `納税カレンダー_${summaryYear}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function escapeICS(s){
+    return String(s)
+      .replace(/\\/g,"\\\\")
+      .replace(/\n/g,"\\n")
+      .replace(/,/g,"\\,")
+      .replace(/;/g,"\\;");
+  }
+
+  // ハンドラ
+  runBtn.addEventListener("click", ()=>{
+    const evs = buildEvents();
+    render(evs);
+  });
+
+  dlBtn.addEventListener("click", ()=>{
+    const evs = buildEvents();
+    if(evs.length>0) downloadICS(evs);
+  });
+
+  // 初期描画
+  render([]);
+
+})();
+</script>
+</body>
+</html>
