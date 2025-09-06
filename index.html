@@ -76,6 +76,11 @@
   .empty{padding:24px; color:var(--muted);}
   .footnote{padding:10px 14px; border-top:1px solid var(--line); color:#cbd5e1; font-size:12.5px;}
   .sep{height:1px; background:var(--line); margin:8px 0;}
+  .step{display:none;}
+  #wizardNav{display:none; justify-content:flex-end; gap:10px;}
+  #toolbar{display:none;}
+  #toolbarSep{display:none;}
+  #startScreen{text-align:center;}
 </style>
 </head>
 <body>
@@ -89,24 +94,27 @@
   <section class="card" aria-labelledby="formTitle">
     <h2 id="formTitle">条件の選択</h2>
     <div class="body" id="form">
-      <div class="row grid2">
-        <div>
-          <label for="year">対象年（納付年）</label>
-          <input id="year" type="number" value="2025" min="2024" />
-          <div class="hint">例：2025年のカレンダー → 所得税は「2024年分（令和6年分）」の申告納付が3/15、消費税は3/31など</div>
-        </div>
-        <div>
-          <label>住民税の徴収方法</label>
-          <div class="inline pill">
-            <label><input type="radio" name="jumin" value="tokubetsu" checked> 特別徴収（給与天引き）</label>
-            <label><input type="radio" name="jumin" value="futsu"> 普通徴収（自分で4期）</label>
-            <label><input type="radio" name="jumin" value="nenkin"> 年金からの特別徴収（偶数月）</label>
-          </div>
-          <div class="hint">通常：給与所得者は特別徴収が原則。副業分のみ普通徴収にする運用もあります。</div>
-        </div>
+      <div id="startScreen">
+        <button id="start">はじめる</button>
       </div>
 
-      <div class="row">
+      <div class="row step">
+        <label for="year">対象年（納付年）</label>
+        <input id="year" type="number" value="2025" min="2024" />
+        <div class="hint">例：2025年のカレンダー → 所得税は「2024年分（令和6年分）」の申告納付が3/15、消費税は3/31など</div>
+      </div>
+
+      <div class="row step">
+        <label>住民税の徴収方法</label>
+        <div class="inline pill">
+          <label><input type="radio" name="jumin" value="tokubetsu" checked> 特別徴収（給与天引き）</label>
+          <label><input type="radio" name="jumin" value="futsu"> 普通徴収（自分で4期）</label>
+          <label><input type="radio" name="jumin" value="nenkin"> 年金からの特別徴収（偶数月）</label>
+        </div>
+        <div class="hint">通常：給与所得者は特別徴収が原則。副業分のみ普通徴収にする運用もあります。</div>
+      </div>
+
+      <div class="row step">
         <label>健康保険・年金</label>
         <div class="inline pill">
           <label><input type="radio" name="hoken" value="shaho" checked> 社会保険（会社員等）</label>
@@ -119,22 +127,24 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row step">
         <label>所得税（確定申告・予定納税）</label>
         <div class="inline pill">
           <label><input type="checkbox" id="needKakutei"> 確定申告が必要（例：個人事業主、副業所得20万円超 等）</label>
           <label><input type="checkbox" id="yotei"> 予定納税が発生（前年基準額15万円以上）</label>
+          <label><input type="checkbox" id="shotokuNone"> 自分で納付しない（給与天引き等）</label>
         </div>
       </div>
 
-      <div class="row">
+      <div class="row step">
         <label>個人事業税</label>
         <div class="inline pill">
           <label><input type="checkbox" id="kojigyo"> 対象業種かつ課税見込み（事業主控除超）</label>
+          <label><input type="checkbox" id="kojigyoNone"> 該当なし（会社で徴収）</label>
         </div>
       </div>
 
-      <div class="row">
+      <div class="row step">
         <label>消費税</label>
         <div class="inline pill">
           <label><input type="checkbox" id="shohizei"> 課税事業者（インボイス登録等）</label>
@@ -154,43 +164,46 @@
         </div>
       </div>
 
-      <div class="row grid2">
-        <div>
-          <label>資産保有</label>
-          <div class="inline pill">
-            <label><input type="checkbox" id="hasKotei"> 固定資産（家・土地・償却資産）</label>
-            <label><input type="checkbox" id="hasCar"> 自動車/軽自動車</label>
-          </div>
-        </div>
-        <div>
-          <label>国保・保険料の扱い</label>
-          <div class="inline pill">
-            <label><input type="checkbox" id="genKokuho"> 国民健康保険料を月次で出力</label>
-          </div>
+      <div class="row step">
+        <label>資産保有</label>
+        <div class="inline pill">
+          <label><input type="checkbox" id="hasKotei"> 固定資産（家・土地・償却資産）</label>
+          <label><input type="checkbox" id="hasCar"> 自動車/軽自動車</label>
         </div>
       </div>
 
-      <div class="row grid2">
-        <div>
-          <label for="zoyoDate">贈与があった日</label>
-          <input id="zoyoDate" type="date" />
-          <div class="hint">あった場合のみ。翌年2/1〜3/15が申告・納付期間（出力は3/15を目安）。</div>
-        </div>
-        <div>
-          <label for="sozokuDate">相続開始日（被相続人の死亡日）</label>
-          <input id="sozokuDate" type="date" />
-          <div class="hint">10か月後が申告・納付期限。</div>
+      <div class="row step">
+        <label>国保・保険料の扱い</label>
+        <div class="inline pill">
+          <label><input type="checkbox" id="genKokuho"> 国民健康保険料を月次で出力</label>
         </div>
       </div>
 
-      <div class="row">
+      <div class="row step">
+        <label for="zoyoDate">贈与があった日</label>
+        <input id="zoyoDate" type="date" />
+        <div class="hint">あった場合のみ。翌年2/1〜3/15が申告・納付期間（出力は3/15を目安）。</div>
+      </div>
+
+      <div class="row step">
+        <label for="sozokuDate">相続開始日（被相続人の死亡日）</label>
+        <input id="sozokuDate" type="date" />
+        <div class="hint">10か月後が申告・納付期限。</div>
+      </div>
+
+      <div class="row step">
         <label for="fudosanDate">不動産を取得した日</label>
         <input id="fudosanDate" type="date" />
         <div class="hint">不動産取得税は「自治体からの納税通知書に記載の期日」。ここではメモ用イベントを出力します。</div>
       </div>
 
-      <div class="sep"></div>
-      <div class="toolbar">
+      <div class="wizard-nav" id="wizardNav">
+        <button id="prevStep" class="ghost">戻る</button>
+        <button id="nextStep">次へ</button>
+      </div>
+
+      <div class="sep" id="toolbarSep"></div>
+      <div class="toolbar" id="toolbar">
         <button id="run">納付イベントを生成</button>
         <button id="download" class="ghost" disabled>ICSを書き出す</button>
         <div class="kpi"><strong id="count">0</strong> 件のイベント</div>
@@ -222,7 +235,9 @@
   const payKokuminNenkinEl = $("#payKokuminNenkin");
   const needKakuteiEl = $("#needKakutei");
   const yoteiEl = $("#yotei");
+  const shotokuNoneEl = $("#shotokuNone");
   const kojigyoEl = $("#kojigyo");
+  const kojigyoNoneEl = $("#kojigyoNone");
   const shohizeiEl = $("#shohizei");
   const chukanCountEl = $("#chukanCount");
   const customChukanEl = $("#customChukan");
@@ -237,6 +252,71 @@
   const dlBtn = $("#download");
   const resultEl = $("#result");
   const countEl = $("#count");
+
+  const startScreenEl = $("#startScreen");
+  const startBtn = $("#start");
+  const wizardNavEl = $("#wizardNav");
+  const prevBtn = $("#prevStep");
+  const nextBtn = $("#nextStep");
+  const steps = $$(".step");
+  const toolbarEl = $("#toolbar");
+  const toolbarSepEl = $("#toolbarSep");
+
+  // UX: 所得税・個人事業税の「納付しない」選択
+  shotokuNoneEl.addEventListener("change", ()=>{
+    const off = shotokuNoneEl.checked;
+    needKakuteiEl.disabled = off;
+    yoteiEl.disabled = off;
+    if(off){
+      needKakuteiEl.checked = false;
+      yoteiEl.checked = false;
+    }
+  });
+
+  kojigyoNoneEl.addEventListener("change", ()=>{
+    const off = kojigyoNoneEl.checked;
+    kojigyoEl.disabled = off;
+    if(off) kojigyoEl.checked = false;
+  });
+
+  // ステップ表示
+  let stepIdx = -1;
+  function showStep(i){
+    steps.forEach((el, idx)=>{
+      el.style.display = idx === i ? "" : "none";
+    });
+    prevBtn.disabled = i === 0;
+    if(i === steps.length - 1){
+      nextBtn.style.display = "none";
+      toolbarEl.style.display = "";
+      toolbarSepEl.style.display = "";
+    }else{
+      nextBtn.style.display = "";
+      toolbarEl.style.display = "none";
+      toolbarSepEl.style.display = "none";
+    }
+  }
+
+  startBtn.addEventListener("click", ()=>{
+    startScreenEl.style.display = "none";
+    wizardNavEl.style.display = "flex";
+    stepIdx = 0;
+    showStep(stepIdx);
+  });
+
+  nextBtn.addEventListener("click", ()=>{
+    if(stepIdx < steps.length -1){
+      stepIdx++;
+      showStep(stepIdx);
+    }
+  });
+
+  prevBtn.addEventListener("click", ()=>{
+    if(stepIdx > 0){
+      stepIdx--;
+      showStep(stepIdx);
+    }
+  });
 
   // UX: 消費税の有無に応じて中間入力を有効化
   shohizeiEl.addEventListener("change", () => {
