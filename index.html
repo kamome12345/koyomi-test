@@ -111,6 +111,7 @@
         <div class="inline pill">
           <label><input type="radio" name="hoken" value="shaho" checked> 社会保険（会社員等）</label>
           <label><input type="radio" name="hoken" value="kokuho"> 国民健康保険（自営等）</label>
+          <label><input type="radio" name="hoken" value="fuyo"> 家族の扶養（社会保険料なし）</label>
         </div>
         <div class="inline pill">
           <label><input type="checkbox" id="payKokuminNenkin"> 国民年金を納付する</label>
@@ -245,6 +246,18 @@
     if(!on){ chukanCountEl.value = "0"; customChukanEl.value=""; }
   });
 
+  // UX: 健康保険の選択に応じた関連チェック制御
+  function syncHokenOptions(){
+    const h = (hokenEls.find(r=>r.checked)||{}).value;
+    genKokuhoEl.disabled = h !== "kokuho";
+    if(h !== "kokuho") genKokuhoEl.checked = false;
+    const disableNenkin = h === "fuyo";
+    payKokuminNenkinEl.disabled = disableNenkin;
+    if(disableNenkin) payKokuminNenkinEl.checked = false;
+  }
+  hokenEls.forEach(r=> r.addEventListener("change", syncHokenOptions));
+  syncHokenOptions();
+
   // 小道具
   const pad2 = (n)=> String(n).padStart(2,"0");
   const ymd = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
@@ -271,8 +284,8 @@
     const customChukan = customChukanEl.value.trim();
     const hasKotei = hasKoteiEl.checked;
     const hasCar = hasCarEl.checked;
-    const genKokuho = genKokuhoEl.checked;
-    const payKokuminNenkin = payKokuminNenkinEl.checked;
+    const genKokuho = genKokuhoEl.checked && hoken === "kokuho";
+    const payKokuminNenkin = payKokuminNenkinEl.checked && hoken !== "fuyo";
 
     const events = [];
 
@@ -357,7 +370,7 @@
     }
 
     // 国民健康保険料（自治体により年10〜12回。ここでは当年の毎月末を仮置き）
-    if(genKokuho && hoken === "kokuho"){
+    if(genKokuho){
       for(let m=1;m<=12;m++){
         events.push({
           date: ymd(typicalEnd(Y,m)),
